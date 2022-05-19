@@ -11,7 +11,7 @@ nltk.download(['punkt', 'wordnet', 'stopwords'])
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -71,15 +71,28 @@ def build_model():
     ])
     return model
 
+def find_params(model):
+    """
+    This function finds optimal parameters for the model
 
-def evaluate_model(model, X_test, Y_test, category_names):
+    INPUT: None
+    OUTPUT: model with optimal parameters
+    """
+    parameters = {
+        'clf__estimator__min_samples_split': [2, 4]
+    }
+    cv = GridSearchCV(model, param_grid=parameters)
+    return cv
+
+
+def evaluate_model(cv, X_test, Y_test, category_names):
     """
     This function evaluates the model disploying classification report
 
     INPUT: ML model, test labels, test targets, list of categories
     OUTPUT: None
     """
-    y_pred = model.predict(X_test)
+    y_pred = cv.predict(X_test)
 
     for i, b in enumerate(category_names):
         print(b)
@@ -89,7 +102,7 @@ def evaluate_model(model, X_test, Y_test, category_names):
 
 
 
-def save_model(model, model_filepath):
+def save_model(cv, model_filepath):
     """
     This function saves model into pickle file
 
@@ -97,7 +110,7 @@ def save_model(model, model_filepath):
     OUTPUT: None
     """
 
-    pickle.dump(model, open(model_filepath, 'wb'))
+    pickle.dump(cv, open(model_filepath, 'wb'))
 
 
 def main():
@@ -110,14 +123,18 @@ def main():
         print('Building model...')
         model = build_model()
 
+        cv = find_params(model)
+
         print('Training model...')
-        model.fit(X_train, Y_train)
+        cv.fit(X_train, Y_train)
+        print('Finding best parameters...')
+        print("\nBest Parameters:", cv.best_params_)
 
         print('Evaluating model...')
-        evaluate_model(model, X_test, Y_test, category_names)
+        evaluate_model(cv, X_test, Y_test, category_names)
 
         print('Saving model...\n    MODEL: {}'.format(model_filepath))
-        save_model(model, model_filepath)
+        save_model(cv, model_filepath)
 
         print('Trained model saved!')
 
